@@ -1,3 +1,5 @@
-import Connection from './connection.js'
 import Driver from './driver.js'
-export { Connection, Driver }
+import Connection from './connection.js'
+export * from './connection.js'
+export * from './driver.js'
+export { Driver, Connection }

@@ -1,5 +1,4 @@
-import { Driver } from '../src/index.js'
-import { ConnectionState, Credential } from '../src/connection.js'
+import { Driver, ConnectionState, Credential } from '../src/index.js'
 import { readFileSync, writeFileSync } from 'fs'
 
 // CONSTANT

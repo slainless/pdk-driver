@@ -3,7 +3,7 @@ import { AnggotaKeluarga, parseAgtKeluarga } from './lib/data-parser.js'
 import { ParserResponse } from './lib/types.js'
 import { FormData } from 'formdata-polyfill/esm.min.js'
 
-type GetOptions = {
+export type GetOptions = {
   /** Should method returns raw HTML string or processed and validated object? */
   raw?: boolean
   // TODO: add ability to change perPage!
