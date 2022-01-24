@@ -1,21 +1,30 @@
 {
   "name": "prodeskel-node-ts",
-  "version": "0.1.0",
-  "main": "dist/index.js",
-  "types": "dist/index.js",
+  "version": "0.2.0",
+  "exports": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "author": "<aimanfauzy.99@gmail.com>",
   "license": "MIT",
   "devDependencies": {
+    "@types/node": "^17.0.10",
+    "nodemon": "^2.0.15",
     "ts-node": "^10.4.0",
     "typescript": "^4.5.5"
   },
   "dependencies": {
+    "formdata-polyfill": "^4.0.10",
     "node-fetch": "^3.2.0",
     "rehype-parse": "^8.0.3",
+    "superstruct": "^0.15.3",
     "unified": "^10.1.1",
     "unist-util-visit": "^4.1.0"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "dev": "nodemon"
+  },
+  "type": "module",
+  "engines": {
+    "node": "^12.20.0 || ^14.13.1 || >=16.0.0"
   }
 }

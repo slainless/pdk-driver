@@ -1,3 +1,6 @@
 node_modules/*
 dist/*
-dev/*
+credential.json
+dev/connection_dump.json
+dev/credential.json
+.vscode/*
