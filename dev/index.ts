@@ -7,12 +7,11 @@ const CONNECTION_DUMP_FILE = 'dev/connection_dump.json'
 const CREDENTIAL = 'dev/credential.json'
 
 // ### BOOTSTRAPPING
-const decoder = new TextDecoder()
 const credential: Credential = JSON.parse(
-  decoder.decode(readFileSync(CREDENTIAL))
+  readFileSync(CREDENTIAL, { encoding: 'utf8' })
 )
 const connectionState: ConnectionState = JSON.parse(
-  decoder.decode(readFileSync(CONNECTION_DUMP_FILE))
+  readFileSync(CONNECTION_DUMP_FILE, { encoding: 'utf8' })
 )
 
 const driver = new Driver(credential, {

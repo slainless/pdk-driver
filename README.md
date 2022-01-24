@@ -27,7 +27,7 @@ Both files definition can be checked in `src/connection.ts`.
 Then, import `Driver` from `src/index.ts`. Initialize `Driver` with credential
 then call it's method. Login can also (and should) be enforced before attempting
 to call any other method to make sure initial request and resource is not wasted
-because of bad session since.
+because of bad session.
 
 ---
 
