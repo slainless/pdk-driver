@@ -1,8 +1,4 @@
-import { unified } from 'unified'
-import rehypeParse from 'rehype-parse'
-// import { select, selectAll } from 'unist-util-select'
-import type { Element } from 'hast'
-import { visit } from 'unist-util-visit'
+import * as cheerio from 'cheerio'
 import * as s from 'superstruct'
 import { ParserResponse } from '../types'
 
@@ -58,94 +54,44 @@ export function parseAgtKeluarga(
   if (bodyRaw == null || toolbarRaw == null)
     throw new Error('Cannot find body or the toolbar from response!')
 
-  const parser = unified().use(rehypeParse, { fragment: true })
-  // parsed html in unist
-  const bodyTree = parser.parse(bodyRaw.value)
-
   const count = /\[\d+ sampai \d+ dari (\d+)\]/g.exec(toolbarRaw.value)?.[1]
   if (count == null) throw new Error('Count number not found!')
 
   const data: AnggotaKeluarga[] = []
+  let time = Date.now()
+  // parsed html in unist
+  const $ = cheerio.load(bodyRaw.value, null, false)
+  const trs = $('tr.scGridFieldOdd, tr.scGridFieldEven')
+  for (const tr of trs) {
+    const d: string[] = []
+    const tds = $('td', tr).toArray()
 
-  // visit the tree
-  visit(
-    bodyTree,
+    for (const td of tds) d.push($('*', td).text())
 
-    // here, we add test to filter elements
-    (node) => {
-      // if child is not element, then skip
-      if (node.type == 'element') {
-        const el = node as Element
-        const className = el.properties?.className
-
-        // we only need to get every <tr> in the table
-        // which className is `scGridFieldOdd` or `scGridFieldEven`
-        if (
-          el.tagName == 'tr' &&
-          Array.isArray(className) &&
-          (className?.[0] == 'scGridFieldOdd' ||
-            className?.[0] == 'scGridFieldEven')
-        )
-          return true
-      }
-
-      return false
-    },
-
-    // for every <tr class="scGridFieldOdd"> and <tr class="scGridFieldEven">,
-    // we do this...
-    (node) => {
-      let i = 0
-      const d: string[] = []
-
-      visit(
-        // for every <tr>,
-        node,
-        // we select the <td>
-        (node) => {
-          const el = node as Element
-          return el.tagName == 'td'
-        },
-        // for every <td>...
-        (node) => {
-          let text = ''
-          // we select their text inside
-          visit(node, 'text', (node) => {
-            text += node.value
-          })
-          // every text is then pushed to temporary
-          // variable `d`
-          d.push(text.trim())
-          i++
-        }
-      )
-
-      // `d` is the container for every field's value
-      data.push({
-        rw: d[1],
-        rt: d[2],
-        dusun: d[3],
-        alamat: d[4],
-        kode_keluarga: d[5],
-        nama_kepala_keluarga: d[6],
-        no_di_kk: +d[7],
-        nik: d[8],
-        nama: d[9],
-        jenis_kelamin: d[10],
-        hubungan: d[11],
-        tempat_lahir: d[12],
-        tanggal_lahir: d[13],
-        usia: +d[14],
-        status: d[15],
-        agama: d[16],
-        golongan_darah: d[17],
-        kewarganegaraan: d[18],
-        etnis: d[19],
-        pendidikan: d[20],
-        pekerjaan: d[21],
-      })
-    }
-  )
+    data.push({
+      rw: d[1],
+      rt: d[2],
+      dusun: d[3],
+      alamat: d[4],
+      kode_keluarga: d[5],
+      nama_kepala_keluarga: d[6],
+      no_di_kk: +d[7],
+      nik: d[8],
+      nama: d[9],
+      jenis_kelamin: d[10],
+      hubungan: d[11],
+      tempat_lahir: d[12],
+      tanggal_lahir: d[13],
+      usia: +d[14],
+      status: d[15],
+      agama: d[16],
+      golongan_darah: d[17],
+      kewarganegaraan: d[18],
+      etnis: d[19],
+      pendidikan: d[20],
+      pekerjaan: d[21],
+    })
+  }
 
   return {
     data,

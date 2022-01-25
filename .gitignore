@@ -4,3 +4,4 @@ credential.json
 dev/connection_dump.json
 dev/credential.json
 .vscode/*
+yarn-error.log
