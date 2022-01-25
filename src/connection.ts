@@ -30,6 +30,8 @@ export interface ConnectionOptions {
   useCredential?: Credential
 }
 
+type FetchProgress = { process: Promise<any> | null; locked: boolean }
+
 /**
  * Class to handle cookies management, login, and fetching.
  * Other implementations including:
@@ -46,14 +48,21 @@ export default class Connection {
     ['User-Agent']:
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36',
   }
-  /** Return promise to prevent access race condition */
-  public cookieJar: Promise<PHPCookieJar> = new Promise((res) =>
-    res(new PHPCookieJar())
-  )
-  /** Return promise to prevent access race condition */
-  private _isLoggedIn: Promise<boolean> = new Promise((res) => res(false))
+
+  private __cookieJar = new PHPCookieJar()
+  private __isLoggedIn = false
+  get isLoggedIn() {
+    return this.__isLoggedIn
+  }
+  get cookieJar() {
+    return this.__cookieJar
+  }
 
   private credential?: Credential
+
+  private cookieProgress: Promise<void> | null = null
+  private loginProgress: Promise<void> | null = null
+  private lockCookies = false
 
   constructor(options?: ConnectionOptions) {
     if (options == null) return
@@ -62,8 +71,8 @@ export default class Connection {
     if (initialState) {
       const jar = new PHPCookieJar()
       jar.push(...parseCookies(initialState.cookies))
-      this.cookieJar = new Promise((res) => res(jar))
-      this._isLoggedIn = new Promise((res) => res(initialState.isLoggedIn))
+      this.__cookieJar = jar
+      this.__isLoggedIn = jar.length === 0 ? false : initialState.isLoggedIn
     }
 
     if (useCredential) this.credential = useCredential
@@ -74,30 +83,31 @@ export default class Connection {
    * by touching `/app_login/`
    */
   async generateCookies(): Promise<void> {
-    const reqControl = new AbortController()
-
-    // we are returning promise to prevent race condition.
-    // by doing this, we are making sure that only one cookie
-    // generation process can exist at one time. the other
-    // will have to wait until this fetch process complete.
-    this.cookieJar = new Promise((res) => {
-      fetch(Connection.BASE_URL + '/app_login/', {
+    if (this.cookieProgress == null) {
+      const reqControl = new AbortController()
+      this.cookieProgress = fetch(Connection.BASE_URL + '/app_login/', {
         headers: this.headers,
         signal: reqControl.signal,
-      }).then((r) => {
-        const jar = new PHPCookieJar()
-        jar.push(...parseCookies(r.headers))
-        if (jar.find((c) => c.name === 'PHPSESSID') == null)
-          throw new Error('PHPSESSID is not found in response set-cookies!')
-
-        reqControl.abort()
-        res(jar)
       })
-    })
-  }
+        .then((r) => {
+          const jar = new PHPCookieJar()
+          jar.push(...parseCookies(r.headers))
+          if (jar.find((c) => c.name === 'PHPSESSID') == null)
+            throw new Error('PHPSESSID is not found in response set-cookies!')
 
-  get isLoggedIn() {
-    return this._isLoggedIn
+          reqControl.abort()
+          this.__cookieJar = jar
+        })
+        .finally(() => {
+          reqControl.abort()
+          this.cookieProgress = null
+        })
+    }
+
+    if (this.cookieProgress == null)
+      throw new Error('IMPLEMENTATION_ERROR: EMPTY_COOKIE_PROGRESS')
+
+    await this.cookieProgress
   }
 
   /**
@@ -108,14 +118,15 @@ export default class Connection {
    *
    * Will call `this.generateCookies()` when no cookies found.
    *
-   * Will wait for `this.isLoggedIn`, to prevent multiple `login()` call overlap.
+   * Calling this method will make sure that cookies is generated,
+   * cookies.sessionId is exist, and this.isLogin exist
    *
    * Throw error on fail attempt.
+   * @param force {boolean} force login
    */
-  async login(credential?: Credential) {
+  async login(credential?: Credential | null) {
     // if state is loggedIn and session ID is not empty, then return true
-    if ((await this.isLoggedIn) && (await this.cookieJar).sessionId != null)
-      return
+    if (this.__isLoggedIn && this.cookieJar.sessionId != null) return
 
     if (credential == null && this.credential == null)
       throw new Error(
@@ -130,79 +141,92 @@ export default class Connection {
           'then make sure that you are setting `useCredential`.'
       )
 
-    let jar = await this.cookieJar
-    // if jar is empty, then generate cookies first
-    if (jar.length === 0)
-      // throw new Error(
-      //   'Cookies must be generated first before attempting to login!'
-      // )
-      await this.generateCookies()
+    if (this.loginProgress == null) {
+      this.lockCookies = true
+      this.loginProgress = new Promise<void>(async (res) => {
+        if (this.cookieJar.length === 0)
+          // throw new Error(
+          //   'Cookies must be generated first before attempting to login!'
+          // )
+          await this.generateCookies()
 
-    jar = await this.cookieJar
-    if (jar.length === 0)
-      throw new Error('IMPLEMENTATION ERROR: NO_COOKIE_GENERATED')
+        const jar = this.cookieJar
+        if (jar.length === 0)
+          throw new Error('IMPLEMENTATION_ERROR: NO_COOKIE_GENERATED')
+        const sessionId = jar.sessionId
+        if (sessionId == null)
+          throw new Error('PHPSESSID is not found in cookies!')
 
-    const sessionId = jar.sessionId
-    if (sessionId == null) throw new Error('PHPSESSID is not found in cookies!')
+        const cookiesString = jar.shortString
+        const headers = {
+          ...this.headers,
+          // ['Content-Type']: 'application/x-www-form-urlencoded',
+          ['Origin']: Connection.BASE_URL,
+          ['Referer']: Connection.BASE_URL + '/app_login/',
+          ['Upgrade-Insecure-Requests']: '1',
+          ['Cookie']: cookiesString,
+          ['Host']: Connection.HOST,
+        }
 
-    const cookiesString = jar.shortString
-    const headers = {
-      ...this.headers,
-      // ['Content-Type']: 'application/x-www-form-urlencoded',
-      ['Origin']: Connection.BASE_URL,
-      ['Referer']: Connection.BASE_URL + '/app_login/',
-      ['Upgrade-Insecure-Requests']: '1',
-      ['Cookie']: cookiesString,
-      ['Host']: Connection.HOST,
+        let body = new FormData()
+        body.append('nm_form_submit', '1')
+        body.append('nmgp_idioma_novo', '')
+        body.append('nmgp_schema_f', '')
+        body.append('nmgp_url_saida', '')
+        body.append('bok', 'OK')
+        body.append('nmgp_opcao', 'alterar')
+        body.append('nmgp_ancora', '')
+        body.append('nmgp_num_form', '')
+        body.append('nmgp_parms', '')
+        body.append('script_case_init', '1')
+        body.append('script_case_session', sessionId.value)
+        body.append('links', '')
+        body.append('login', username)
+        body.append('pswd', password)
+
+        // NOTE:
+        // $ sample failed login response text length: 125320
+        // $ sample success login response text length: 1180
+        // wrong credential will return a response with length ~120000 while
+        // right credential will return a response with length ~1000
+        // we can use it as an indicator for successful/failed login
+        //
+        // also, failed login will return a GET response instead.
+        // # detail in postman.
+
+        const reqControl = new AbortController()
+        fetch(Connection.BASE_URL + '/app_login/', {
+          headers,
+          method: 'POST',
+          body: body,
+          signal: reqControl.signal,
+        })
+          .then((r) => {
+            // cancel the request to minimize resource usage.
+            // no need to fetch all the data, we just need the length to know
+            // whether the login is successful or not.
+            const contentLength = +(r.headers.get('Content-Length') ?? 0)
+            reqControl.abort()
+            if (contentLength > 100000)
+              throw new Error(
+                `Login failed! It's probably because of wrong credential.`
+              )
+            this.__isLoggedIn = true
+          })
+          .finally(() => {
+            this.cookieProgress = null
+            res()
+          })
+      }).finally(() => {
+        this.lockCookies = false
+        this.loginProgress = null
+      })
     }
 
-    let body = new FormData()
-    body.append('nm_form_submit', '1')
-    body.append('nmgp_idioma_novo', '')
-    body.append('nmgp_schema_f', '')
-    body.append('nmgp_url_saida', '')
-    body.append('bok', 'OK')
-    body.append('nmgp_opcao', 'alterar')
-    body.append('nmgp_ancora', '')
-    body.append('nmgp_num_form', '')
-    body.append('nmgp_parms', '')
-    body.append('script_case_init', '1')
-    body.append('script_case_session', sessionId.value)
-    body.append('links', '')
-    body.append('login', username)
-    body.append('pswd', password)
+    if (this.loginProgress == null)
+      throw new Error(`IMPLEMENTATION_ERROR: EMPTY_LOGIN_PROGRESS`)
 
-    // NOTE:
-    // $ sample failed login response text length: 125320
-    // $ sample success login response text length: 1180
-    // wrong credential will return a response with length ~120000 while
-    // right credential will return a response with length ~1000
-    // we can use it as an indicator for successful/failed login
-    //
-    // also, failed login will return a GET response instead.
-    // # detail in postman.
-    this._isLoggedIn = new Promise((res, rej) => {
-      const reqControl = new AbortController()
-      fetch(Connection.BASE_URL + '/app_login/', {
-        headers,
-        method: 'POST',
-        body: body,
-        signal: reqControl.signal,
-      }).then((r) => {
-        // cancel the request to minimize resource usage.
-        // no need to fetch all the data, we just need the length to know
-        // whether the login is successful or not.
-        res(+(r.headers.get('Content-Length') ?? 0) < 100000)
-        reqControl.abort()
-      })
-    })
-    const result = await this._isLoggedIn
-    if (result == false)
-      throw new Error(
-        `Login failed! It's probably because of wrong credential.`
-      )
-
-    return
+    await this.loginProgress
   }
 
   /**
@@ -218,26 +242,25 @@ export default class Connection {
   async fetch(
     input: Parameters<typeof fetch>[0],
     init?: Omit<RequestInit, 'body'> & {
-      body?: () => Promise<BodyInit | null> | BodyInit | null
+      body?: () => BodyInit | null
     }
   ) {
     await this.login()
-    const jar = await this.cookieJar
-    const sessionId = jar.sessionId!
+    const currentSessionId = this.cookieJar.sessionId!
 
     let reqSignal = new AbortController()
     const { body, ...restInit } = init ?? {}
-    const req = async (options?: RequestInit) => {
+    const req = (options?: RequestInit) => {
       return fetch(Connection.BASE_URL + input, {
         ...restInit,
         ...options,
         headers: {
-          ['Cookie']: jar.shortString,
+          ['Cookie']: this.cookieJar.shortString,
           ...this.headers,
           ...restInit?.headers,
           ...options?.headers,
         },
-        body: await body?.(),
+        body: body?.(),
       })
     }
 
@@ -264,7 +287,9 @@ export default class Connection {
     // the pros of this approach is that we can save resources by not parsing the
     // response everytime `fetch()` is called.
 
-    const phpSessIdLength = new TextEncoder().encode(sessionId.value).length
+    const phpSessIdLength = new TextEncoder().encode(
+      currentSessionId.value
+    ).length
     const contentLength = +(res!.headers!.get('Content-Length') ?? 0)
     if (contentLength === 1496 + phpSessIdLength) {
       // if `useCredential` is not set, then throw error
@@ -275,12 +300,10 @@ export default class Connection {
       // else, clear state, then
       // wait for session renewal.
       this.clearState()
-      // this is where we throttle the login process
-      // only one login process can run at one time
       await this.login()
 
       // throw error if login state is still not changed.
-      if ((await this.isLoggedIn) == false)
+      if (this.__isLoggedIn == false)
         throw new Error('IMPLEMENTATION ERROR: LOGIN_FAILED')
 
       // cancel the ongoing request
@@ -307,14 +330,15 @@ export default class Connection {
    */
   async dumpState(): Promise<ConnectionState> {
     return {
-      cookies: (await this.cookieJar).fullString,
-      isLoggedIn: await this.isLoggedIn,
+      cookies: this.cookieJar.fullString,
+      isLoggedIn: await this.__isLoggedIn,
     }
   }
 
   clearState() {
-    this.cookieJar = new Promise((res) => res(new PHPCookieJar()))
-    this._isLoggedIn = new Promise((res) => res(false))
+    if (this.lockCookies) return this
+    this.__cookieJar = new PHPCookieJar()
+    this.__isLoggedIn = false
     return this
   }
 }

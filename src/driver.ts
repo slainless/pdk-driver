@@ -34,10 +34,8 @@ export default class Driver {
    * - `nav_offset: ${number}`: navigate a grid/table view with offset
    * - `per_page: ${number}`: change how many data a grid/table view shows per page
    */
-  async generateCommand(
-    command: `nav_offset: ${number}` | `per_page: ${number}`
-  ) {
-    const jar = await this.connection.cookieJar
+  generateCommand(command: `nav_offset: ${number}` | `per_page: ${number}`) {
+    const jar = this.connection.cookieJar
     if (jar.length === 0 || jar.sessionId == null)
       throw new Error('Generate session ID first before calling this method!')
 
