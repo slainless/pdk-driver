@@ -1,6 +1,6 @@
 {
   "name": "prodeskel-node-ts",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "exports": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "author": "<aimanfauzy.99@gmail.com>",
@@ -15,6 +15,7 @@
   "dependencies": {
     "cheerio": "^1.0.0-rc.10",
     "formdata-polyfill": "^4.0.10",
+    "nanoid": "^3.2.0",
     "node-fetch": "^3.2.0",
     "rehype-parse": "^8.0.3",
     "superstruct": "^0.15.3",

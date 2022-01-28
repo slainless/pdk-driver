@@ -10,6 +10,7 @@
 import { Cookie, PHPCookieJar, parseCookies } from './lib/cookie.js'
 import fetch, { Headers, RequestInit, BodyInit } from 'node-fetch'
 import { FormData } from 'formdata-polyfill/esm.min.js'
+import { nanoid } from 'nanoid'
 
 export type Credential = { username: string; password: string }
 export interface ConnectionState {
@@ -246,11 +247,33 @@ export default class Connection {
     }
   ) {
     await this.login()
-    const currentSessionId = this.cookieJar.sessionId!
 
     let reqSignal = new AbortController()
     const { body, ...restInit } = init ?? {}
+    let currentSessionId: string
+    let currentInitId: string
+
     const req = (options?: RequestInit) => {
+      const data = body?.() ?? new FormData()
+      if (data instanceof FormData) {
+        if (data.has('script_case_init') == false)
+          data.set('script_case_init', nanoid(6))
+
+        if (data.has('script_case_session') == false)
+          data.set('script_case_session', this.cookieJar.sessionId!.value)
+
+        currentSessionId = data.get('script_case_session') as string
+        currentInitId = data.get('script_case_init') as string
+
+        if (
+          typeof currentSessionId != 'string' ||
+          typeof currentInitId != 'string'
+        )
+          throw new Error(`Fetch data must contain string sessionId & initId`)
+      } else {
+        throw new Error(`Fetch data must be a FormData`)
+      }
+
       return fetch(Connection.BASE_URL + input, {
         ...restInit,
         ...options,
@@ -260,7 +283,7 @@ export default class Connection {
           ...restInit?.headers,
           ...options?.headers,
         },
-        body: body?.(),
+        body: data,
       })
     }
 
@@ -274,24 +297,27 @@ export default class Connection {
     // to determine whether the request is failed because of invalid session or
     // credential failure, we need to check the length of the response body.
     //
-    // INITIALLY, response length will be *EXACTLY* 1496 without factoring
+    // INITIALLY, response length will be *EXACTLY* 1495 without factoring
     // PHPSESSID value's byte length, which can be computed from
-    // `data/example_credential_fail.html` + excluding the session id.
+    // `data/example_credential_fail.html` + excluding the session id and init id.
     // # PHPSESSID is stored in element named `script_case_session`
+    // # INITID is store in element named `script_case_init`
     //
     // using that information, we can determine if the response is a fail res
-    // by checking if CONTENT_LENGTH === PHPSESSID_VALUE_LENGTH + 1496.
+    // by checking if:
+    // CONTENT_LENGTH === PHPSESSID_VALUE_LENGTH + INITID_VALUE_LENGTH + 1495.
     //
     // this is a pretty hacky approach and the chance of legit response returning
-    // length 1496 + PHPSESSID_VALUE_LENGTH is not zero.
+    // that length is not zero.
     // the pros of this approach is that we can save resources by not parsing the
     // response everytime `fetch()` is called.
 
-    const phpSessIdLength = new TextEncoder().encode(
-      currentSessionId.value
-    ).length
+    const encoder = new TextEncoder()
+    const sessionIdLength = encoder.encode(currentSessionId!).length
+    const initIdLength = encoder.encode(currentInitId!).length
+
     const contentLength = +(res!.headers!.get('Content-Length') ?? 0)
-    if (contentLength === 1496 + phpSessIdLength) {
+    if (contentLength === 1495 + sessionIdLength + initIdLength) {
       // if `useCredential` is not set, then throw error
       if (this.credential == null)
         throw new Error(

@@ -1,23 +1,6 @@
 import * as cheerio from 'cheerio'
 import * as s from 'superstruct'
-import { ParserResponse } from '../types'
 
-// @ref: data/example_grid_agtkeluarga_fmt.json
-// unused field is omitted
-interface PendudukResponse {
-  setValue: Array<{
-    field: string
-    value: string
-  }>
-}
-const PendudukResponseSchema: s.Describe<PendudukResponse> = s.type({
-  setValue: s.array(
-    s.object({
-      field: s.string(),
-      value: s.string(),
-    })
-  ),
-})
 export interface AnggotaKeluarga {
   rw: string
   rt: string
@@ -42,25 +25,10 @@ export interface AnggotaKeluarga {
   pekerjaan: string
 }
 
-export function parseAgtKeluarga(
-  input: unknown
-): ParserResponse<AnggotaKeluarga> {
-  s.assert(input, PendudukResponseSchema)
-  const bodyRaw = input.setValue.find((v) => v.field === 'sc_grid_body')
-  const toolbarRaw = input.setValue.find(
-    (v) => v.field === 'sc_grid_toobar_bot'
-  )
-
-  if (bodyRaw == null || toolbarRaw == null)
-    throw new Error('Cannot find body or the toolbar from response!')
-
-  const count = /\[\d+ sampai \d+ dari (\d+)\]/g.exec(toolbarRaw.value)?.[1]
-  if (count == null) throw new Error('Count number not found!')
-
+export function parseAgtKeluarga(input: string): AnggotaKeluarga[] {
   const data: AnggotaKeluarga[] = []
-  let time = Date.now()
   // parsed html in unist
-  const $ = cheerio.load(bodyRaw.value, null, false)
+  const $ = cheerio.load(input, null, false)
   const trs = $('tr.scGridFieldOdd, tr.scGridFieldEven')
   for (const tr of trs) {
     const d: string[] = []
@@ -93,8 +61,5 @@ export function parseAgtKeluarga(
     })
   }
 
-  return {
-    data,
-    total: +count,
-  }
+  return data
 }
