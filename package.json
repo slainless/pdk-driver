@@ -29,7 +29,7 @@
     "build": "tsc",
     "dev": "nodemon",
     "exe": "node --loader ts-node/esm",
-    "build:docs": "typedoc --out docs src/index.ts"
+    "build:docs": "typedoc"
   },
   "type": "module",
   "engines": {

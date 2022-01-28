@@ -1,4 +1,4 @@
-prodeskel-node-ts / [Exports](modules.md)
+prodeskel-node-ts / [Modules](modules.md)
 
 # Prodeskel Driver in Node.JS
 

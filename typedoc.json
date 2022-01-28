@@ -1,0 +1,13 @@
+{
+  "entryPoints": [
+    "./src/index.ts",
+    "./src/connection.ts",
+    "./src/driver.ts",
+    "./src/lib/types.ts",
+    "./src/lib/data-parser.ts",
+    "./src/lib/schema.ts",
+    "./src/lib/cookie.ts"
+  ],
+  "plugin": ["typedoc-plugin-markdown"],
+  "out": "docs"
+}
