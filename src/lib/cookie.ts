@@ -42,7 +42,7 @@ const trueKey: Record<Uppercase<CookieKey>, CookieKey> = {
 /**
  * Class implementation of Deno's Cookie.
  */
-export class Cookie implements Cookie {
+export class Cookie {
   constructor(
     /** key of the cookie */
     public name: string,
