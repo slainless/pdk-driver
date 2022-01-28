@@ -8,6 +8,6 @@
     "./src/lib/schema.ts",
     "./src/lib/cookie.ts"
   ],
-  "plugin": ["typedoc-plugin-markdown"],
+  "plugin": "none",
   "out": "docs"
 }
