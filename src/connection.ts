@@ -10,8 +10,13 @@
 import { Cookie, PHPCookieJar, parseCookies } from './lib/cookie.js'
 import fetch, { Headers, RequestInit, BodyInit } from 'node-fetch'
 import { FormData } from 'formdata-polyfill/esm.min.js'
-import { nanoid } from 'nanoid'
+import { customAlphabet } from 'nanoid'
 
+/** Generate nanoid with alphabet [a-zA-Z0-9] */
+const nanoid = customAlphabet(
+  'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+  26
+)
 export type Credential = { username: string; password: string }
 export interface ConnectionState {
   cookies: string
@@ -31,11 +36,10 @@ export interface ConnectionOptions {
   useCredential?: Credential
 }
 
-type FetchProgress = { process: Promise<any> | null; locked: boolean }
-
 /**
  * Class to handle cookies management, login, and fetching.
  * Other implementations including:
+ * - client-side cookie generation
  * - on-demand login & cookies generation
  * - throttled & cached login
  * - expiring session check logic
@@ -45,6 +49,7 @@ export default class Connection {
   static BASE_URL = (`http://` +
     Connection.HOST) as `http://${typeof Connection.HOST}`
 
+  /** Default header used */
   public headers = {
     ['User-Agent']:
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36',
@@ -52,22 +57,27 @@ export default class Connection {
 
   private __cookieJar = new PHPCookieJar()
   private __isLoggedIn = false
+  /** Login status. Will affect fetch. If `false` then login is called before fetch. */
   get isLoggedIn() {
     return this.__isLoggedIn
   }
+
+  /** Cookies used in every request. */
   get cookieJar() {
     return this.__cookieJar
   }
 
   private credential?: Credential
 
-  private cookieProgress: Promise<void> | null = null
+  /**
+   * Progress placeholder that serves as trigger and throttler to login process.
+   * If `loginProgress` is not null, then `login()` will wait for existing process.
+   * Else, will create new process.
+   */
   private loginProgress: Promise<void> | null = null
-  private lockCookies = false
 
   constructor(options?: ConnectionOptions) {
-    if (options == null) return
-    const { initialState, useCredential } = options
+    const { initialState, useCredential } = options ?? {}
 
     if (initialState) {
       const jar = new PHPCookieJar()
@@ -77,57 +87,44 @@ export default class Connection {
     }
 
     if (useCredential) this.credential = useCredential
+    if (this.__cookieJar.length === 0) this.generateCookies()
   }
 
   /**
-   * Generate cookies (mainly to get `PHPSESSID`) from the server
-   * by touching `/app_login/`
+   * Client-side cookie generation using random `[a-zA-Z0-9](26)`.
+   * Must be noted that `PHPSESSID` that contains other than
+   * `[a-zA-Z0-9,-]` will result in fetch being rejected.
    */
-  async generateCookies(): Promise<void> {
-    if (this.cookieProgress == null) {
-      const reqControl = new AbortController()
-      this.cookieProgress = fetch(Connection.BASE_URL + '/app_login/', {
-        headers: this.headers,
-        signal: reqControl.signal,
+  generateCookies() {
+    const jar = new PHPCookieJar()
+    jar.push(
+      new Cookie('PHPSESSID', nanoid(), {
+        path: '/',
       })
-        .then((r) => {
-          const jar = new PHPCookieJar()
-          jar.push(...parseCookies(r.headers))
-          if (jar.find((c) => c.name === 'PHPSESSID') == null)
-            throw new Error('PHPSESSID is not found in response set-cookies!')
-
-          reqControl.abort()
-          this.__cookieJar = jar
-        })
-        .finally(() => {
-          reqControl.abort()
-          this.cookieProgress = null
-        })
-    }
-
-    if (this.cookieProgress == null)
-      throw new Error('IMPLEMENTATION_ERROR: EMPTY_COOKIE_PROGRESS')
-
-    await this.cookieProgress
+    )
+    this.__cookieJar = jar
+    return this
   }
 
   /**
    * Logging in to prodeskel by `POST`-ing to `/app_login/`.
-   * Requires cookies to be generated beforehand and `PHPSESSID` cookie exist.
    *
    * If `useCredential` is set up, input `credential` will be ignored.
    *
-   * Will call `this.generateCookies()` when no cookies found.
+   * Calling this method will assert that `cookiesJar` is not empty,
+   * `cookies.sessionId` exist.
    *
-   * Calling this method will make sure that cookies is generated,
-   * cookies.sessionId is exist, and this.isLogin exist
+   * If `cookiesJar` is not empty and `isLoggedIn` is true, then will
+   * skip the login process.
+   *
+   * Will using `loginProgress` as single process of login, practically
+   * eliminating chance of race condition.
    *
    * Throw error on fail attempt.
-   * @param force {boolean} force login
    */
   async login(credential?: Credential | null) {
-    // if state is loggedIn and session ID is not empty, then return true
-    if (this.__isLoggedIn && this.cookieJar.sessionId != null) return
+    // if state is loggedIn and session ID is not empty, then return
+    if (this.isLoggedIn && this.cookieJar.sessionId != null) return
 
     if (credential == null && this.credential == null)
       throw new Error(
@@ -142,15 +139,14 @@ export default class Connection {
           'then make sure that you are setting `useCredential`.'
       )
 
-    if (this.loginProgress == null) {
-      this.lockCookies = true
-      this.loginProgress = new Promise<void>(async (res) => {
-        if (this.cookieJar.length === 0)
-          // throw new Error(
-          //   'Cookies must be generated first before attempting to login!'
-          // )
-          await this.generateCookies()
+    if (this.cookieJar.length === 0)
+      // throw new Error(
+      //   'Cookies must be generated first before attempting to login!'
+      // )
+      this.generateCookies()
 
+    if (this.loginProgress == null) {
+      this.loginProgress = new Promise<void>(async (res, rej) => {
         const jar = this.cookieJar
         if (jar.length === 0)
           throw new Error('IMPLEMENTATION_ERROR: NO_COOKIE_GENERATED')
@@ -201,25 +197,22 @@ export default class Connection {
           method: 'POST',
           body: body,
           signal: reqControl.signal,
-        })
-          .then((r) => {
-            // cancel the request to minimize resource usage.
-            // no need to fetch all the data, we just need the length to know
-            // whether the login is successful or not.
-            const contentLength = +(r.headers.get('Content-Length') ?? 0)
-            reqControl.abort()
-            if (contentLength > 100000)
-              throw new Error(
+        }).then((r) => {
+          // cancel the request to minimize resource usage.
+          // no need to fetch all the data, we just need the length to know
+          // whether the login is successful or not.
+          const contentLength = +(r.headers.get('Content-Length') ?? 0)
+          reqControl.abort()
+          if (contentLength > 100000)
+            rej(
+              new Error(
                 `Login failed! It's probably because of wrong credential.`
               )
-            this.__isLoggedIn = true
-          })
-          .finally(() => {
-            this.cookieProgress = null
-            res()
-          })
+            )
+          this.__isLoggedIn = true
+          res()
+        })
       }).finally(() => {
-        this.lockCookies = false
         this.loginProgress = null
       })
     }
@@ -257,7 +250,7 @@ export default class Connection {
       const data = body?.() ?? new FormData()
       if (data instanceof FormData) {
         if (data.has('script_case_init') == false)
-          data.set('script_case_init', nanoid(6))
+          data.set('script_case_init', nanoid().substring(0, 6))
 
         if (data.has('script_case_session') == false)
           data.set('script_case_session', this.cookieJar.sessionId!.value)
@@ -325,7 +318,7 @@ export default class Connection {
         )
       // else, clear state, then
       // wait for session renewal.
-      this.clearState()
+      this.__isLoggedIn = false
       await this.login()
 
       // throw error if login state is still not changed.
@@ -354,15 +347,14 @@ export default class Connection {
    * contains the `cookies` and `isLoggedIn` property
    * of the connection
    */
-  async dumpState(): Promise<ConnectionState> {
+  dumpState(): ConnectionState {
     return {
       cookies: this.cookieJar.fullString,
-      isLoggedIn: await this.__isLoggedIn,
+      isLoggedIn: this.isLoggedIn,
     }
   }
 
   clearState() {
-    if (this.lockCookies) return this
     this.__cookieJar = new PHPCookieJar()
     this.__isLoggedIn = false
     return this
