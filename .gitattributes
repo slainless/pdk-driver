@@ -1,2 +1,3 @@
 dev/* linguist-documentation
+dev/*.html linguist-documentation -linguist-detectable
 docs/* linguist-documentation linguist-generated
