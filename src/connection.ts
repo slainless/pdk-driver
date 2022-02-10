@@ -202,15 +202,19 @@ export default class Connection {
           // no need to fetch all the data, we just need the length to know
           // whether the login is successful or not.
           const contentLength = +(r.headers.get('Content-Length') ?? 0)
+          const encoder = new TextEncoder()
+          const sessionIdLength = encoder.encode(sessionId.value).length
           reqControl.abort()
-          if (contentLength > 100000)
+          if (contentLength !== 1153 + sessionIdLength + 1) {
             rej(
               new Error(
                 `Login failed! It's probably because of wrong credential.`
               )
             )
-          this.__isLoggedIn = true
-          res()
+          } else {
+            this.__isLoggedIn = true
+            res()
+          }
         })
       }).finally(() => {
         this.loginProgress = null

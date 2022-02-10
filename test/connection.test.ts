@@ -71,4 +71,5 @@ test('Connection will throw error on wrong credential', async (t) => {
     },
   })
   await t.throwsAsync(() => c.login())
+  t.false(c.isLoggedIn)
 })
