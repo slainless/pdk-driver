@@ -10,11 +10,13 @@ Read here: [Pure ESM Package](https://gist.github.com/sindresorhus/a39789f98801d
 
 ---
 
-## Quick Start
+## Before running test...
 
-Before starting, generate `dev/connection_dump.json` and `dev/credential.json`
+Generate `dev/connection_dump.json` and `dev/credential.json`
 (or, just modify `dev/index.ts` which will need those two files to be present).
 Both files definition can be checked in `src/connection.ts`.
+
+Will update all unit tests later to read from environment variable instead.
 
 `dev/connection_dump.json`:
 
@@ -34,10 +36,7 @@ Both files definition can be checked in `src/connection.ts`.
 }
 ```
 
-Then, import `Driver` from `src/index.ts`. Initialize `Driver` with credential
-then call it's method. Login can also (and should) be enforced before attempting
-to call any other method to make sure initial request and resource is not wasted
-because of bad session.
+To use, just import `Driver` from `src/index.ts`. Initialize `Driver` with credential then use it however you like. Calling `login()` is optional since it's being handled automatically.
 
 ---
 
@@ -118,10 +117,10 @@ Tests are available in `/test`. Testing is done using ava.js test runner (comman
 
 This project is using:
 
-- [cheerio](https://cheerio.js.org/) to parse HTML into `jquery`-like object to make parsing easier.
+- [cheerio](https://cheerio.js.org/) to parse HTML into `jquery`-like object to make parsing easier
 - [superstruct](https://github.com/ianstormtaylor/superstruct/) to validate data with schema
 - [ava](https://github.com/avajs/ava) for unit testing
-- [prettier](https://prettier.io/) for automatic code formatter, for less hassle
+- [prettier](https://prettier.io/) for automatic opinionated code formatter
 
 ---
 
