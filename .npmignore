@@ -1,0 +1,14 @@
+dev
+.vscode
+yarn-error.log
+docs
+.yarnrc
+.npmrc
+yarn.lock
+nodemon.json
+.gitattributes
+.prettierignore
+tsconfig.json
+typedoc.json
+src
+test

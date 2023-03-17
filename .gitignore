@@ -6,3 +6,5 @@ dev/credential.json
 .vscode/*
 yarn-error.log
 docs/*
+.yarnrc
+.npmrc
