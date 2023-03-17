@@ -121,11 +121,11 @@ This project is using:
 - [cheerio](https://cheerio.js.org/) to parse HTML into `jquery`-like object to make parsing easier.
 - [superstruct](https://github.com/ianstormtaylor/superstruct/) to validate data with schema
 - [ava](https://github.com/avajs/ava) for unit testing
-- [prettier](https://prettier.io/) for automatic code formatter
+- [prettier](https://prettier.io/) for automatic code formatter, for less hassle
 
 ---
 
-## TODO
+## Feature To-Do
 
 - [x] Parallel-able async method
 - [x] Allow auto-relogin on expiring session
@@ -137,3 +137,12 @@ This project is using:
 - [ ] Dump data penduduk
 - [ ] Mass update data penduduk
 - [ ] Sinkronisasi data penduduk
+
+## Project To-Do
+
+- [ ] Update project to use modern NodeJS (atleast, to any version that natively supports ESM)
+- [ ] Updating/upgrading dependencies
+- [ ] Fix ava test runner problem
+- [ ] Curb unused/redundant dependencies
+- [ ] Reducing as much as possible dependency to external package
+- [ ] Refactor code to minimize confusion to reader
