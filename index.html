@@ -1,0 +1,101 @@
+<!DOCTYPE html><html class="default"><head><meta charSet="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>prodeskel-driver</title><meta name="description" content="Documentation for prodeskel-driver"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script async src="assets/search.js" id="search-script"></script></head><body><script>document.body.classList.add(localStorage.getItem("tsd-theme") || "os")</script><header><div class="tsd-page-toolbar"><div class="container"><div class="table-wrap"><div class="table-cell" id="tsd-search" data-base="."><div class="field"><label for="tsd-search-field" class="tsd-widget search no-caption">Search</label><input type="text" id="tsd-search-field"/></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="index.html" class="title">prodeskel-driver</a></div><div class="table-cell" id="tsd-widgets"><div id="tsd-filter"><a href="#" class="tsd-widget options no-caption" data-toggle="options">Options</a><div class="tsd-filter-group"><div class="tsd-select" id="tsd-filter-visibility"><span class="tsd-select-label">All</span><ul class="tsd-select-list"><li data-value="public">Public</li><li data-value="protected">Public/Protected</li><li data-value="private" class="selected">All</li></ul></div> <input type="checkbox" id="tsd-filter-inherited" checked/><label class="tsd-widget" for="tsd-filter-inherited">Inherited</label><input type="checkbox" id="tsd-filter-externals" checked/><label class="tsd-widget" for="tsd-filter-externals">Externals</label></div></div><a href="#" class="tsd-widget menu no-caption" data-toggle="menu">Menu</a></div></div></div></div><div class="tsd-page-title"><div class="container"><h1> prodeskel-driver</h1></div></div></header><div class="container container-main"><div class="row"><div class="col-8 col-content"><div class="tsd-panel tsd-typography">
+<a href="#prodeskel-driver-in-nodejs" id="prodeskel-driver-in-nodejs" style="color: inherit; text-decoration: none;">
+  <h1>Prodeskel Driver in Node.JS</h1>
+</a>
+<p>An API to make access easier to Prodeskel by providing user-friendly APIs, allowing faster development for system integration.</p>
+<hr>
+<p><strong>NOTE:</strong> This project is an <code>ESM</code> package, meaning it cannot be <code>require()</code> from CommonJS.</p>
+<p>Read here: <a href="https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c">Pure ESM Package</a></p>
+<hr>
+
+<a href="#before-running-test" id="before-running-test" style="color: inherit; text-decoration: none;">
+  <h2>Before running test...</h2>
+</a>
+<p>Generate <code>dev/connection_dump.json</code> and <code>dev/credential.json</code>
+(or, just modify <code>dev/index.ts</code> which will need those two files to be present).
+Both files definition can be checked in <code>src/connection.ts</code>.</p>
+<p>Will update all unit tests later to read from environment variable instead.</p>
+<p><code>dev/connection_dump.json</code>:</p>
+<pre><code class="language-json"><span class="hl-0">{</span><br/><span class="hl-0">  </span><span class="hl-1">&quot;cookies&quot;</span><span class="hl-0">: </span><span class="hl-2">&quot;&quot;</span><span class="hl-0">,</span><br/><span class="hl-0">  </span><span class="hl-1">&quot;isLoggedIn&quot;</span><span class="hl-0">: </span><span class="hl-3">false</span><br/><span class="hl-0">}</span>
+</code></pre>
+<p><code>dev/credential.json</code>:</p>
+<pre><code class="language-json"><span class="hl-0">{</span><br/><span class="hl-0">  </span><span class="hl-1">&quot;username&quot;</span><span class="hl-0">: </span><span class="hl-2">&quot;myusername&quot;</span><span class="hl-0">,</span><br/><span class="hl-0">  </span><span class="hl-1">&quot;password&quot;</span><span class="hl-0">: </span><span class="hl-2">&quot;secretKey&quot;</span><br/><span class="hl-0">}</span>
+</code></pre>
+<p>To use, just import <code>Driver</code> from <code>src/index.ts</code>. Initialize <code>Driver</code> with credential then use it however you like. Calling <code>login()</code> is optional since it&#39;s being handled automatically.</p>
+<hr>
+
+<a href="#api-overview" id="api-overview" style="color: inherit; text-decoration: none;">
+  <h2>API Overview</h2>
+</a>
+<p>TypeDoc documentation: <a href="https://prodeskel-driver-docs.netlify.app/">prodeskel-driver-docs.netlify.app</a></p>
+<p>This project consists of 3 components:</p>
+<ul>
+<li>The <code>driver</code></li>
+<li>The <code>connection</code></li>
+<li>The <code>library</code></li>
+</ul>
+<p><code>driver</code> and <code>connection</code> are exposed to end-user. But, the API mainly comes from <code>driver</code>, which is exported by default in the project&#39;s entrypoint (<code>index.js</code>).</p>
+
+<a href="#driver" id="driver" style="color: inherit; text-decoration: none;">
+  <h3>Driver</h3>
+</a>
+<p>Driver is the API of the module. It contains all methods used to read and write data to/from Prodeskel. The usage is very simple, all we need to do is import it then initialize it with credential:</p>
+<pre><code class="language-ts"><span class="hl-4">import</span><span class="hl-0"> </span><span class="hl-5">Driver</span><span class="hl-0"> </span><span class="hl-4">from</span><span class="hl-0"> </span><span class="hl-2">&#39;prodeskel-driver&#39;</span><br/><br/><span class="hl-3">const</span><span class="hl-0"> </span><span class="hl-6">credential</span><span class="hl-0"> = {</span><br/><span class="hl-0">  </span><span class="hl-5">username:</span><span class="hl-0"> </span><span class="hl-2">&#39;my-username&#39;</span><span class="hl-0">,</span><br/><span class="hl-0">  </span><span class="hl-5">password:</span><span class="hl-0"> </span><span class="hl-2">&#39;my-password&#39;</span><span class="hl-0">,</span><br/><span class="hl-0">}</span><br/><br/><span class="hl-3">const</span><span class="hl-0"> </span><span class="hl-6">driver</span><span class="hl-0"> = </span><span class="hl-3">new</span><span class="hl-0"> </span><span class="hl-7">Driver</span><span class="hl-0">(</span><span class="hl-5">credential</span><span class="hl-0">)</span><br/><span class="hl-8">// then, call driver&#39;s method.</span>
+</code></pre>
+<p>After initialization, the driver can be instantly used without needing any more configuration. The driver will handle connection and cookie management in background. All we had to do is calling the method. For example,</p>
+<pre><code class="language-ts"><span class="hl-3">const</span><span class="hl-0"> </span><span class="hl-6">driver</span><span class="hl-0"> = </span><span class="hl-3">new</span><span class="hl-0"> </span><span class="hl-7">Driver</span><span class="hl-0">(</span><span class="hl-5">credential</span><span class="hl-0">)</span><br/><span class="hl-3">const</span><span class="hl-0"> </span><span class="hl-6">result</span><span class="hl-0"> = </span><span class="hl-4">await</span><span class="hl-0"> </span><span class="hl-5">driver</span><span class="hl-0">.</span><span class="hl-7">getDataPenduduk</span><span class="hl-0">({ </span><span class="hl-5">page:</span><span class="hl-0"> </span><span class="hl-9">1</span><span class="hl-0"> })</span><br/><span class="hl-5">console</span><span class="hl-0">.</span><span class="hl-7">log</span><span class="hl-0">(</span><span class="hl-5">result</span><span class="hl-0">)</span>
+</code></pre>
+<p>The driver also supports parallel asynchronous fetching:</p>
+<pre><code class="language-ts"><span class="hl-3">const</span><span class="hl-0"> </span><span class="hl-6">driver</span><span class="hl-0"> = </span><span class="hl-3">new</span><span class="hl-0"> </span><span class="hl-7">Driver</span><span class="hl-0">(</span><span class="hl-5">credential</span><span class="hl-0">)</span><br/><span class="hl-3">const</span><span class="hl-0"> </span><span class="hl-6">results</span><span class="hl-0"> = </span><span class="hl-4">await</span><span class="hl-0"> </span><span class="hl-10">Promise</span><span class="hl-0">.</span><span class="hl-7">all</span><span class="hl-0">([</span><br/><span class="hl-0">  </span><span class="hl-5">driver</span><span class="hl-0">.</span><span class="hl-7">getDataPenduduk</span><span class="hl-0">({ </span><span class="hl-5">page:</span><span class="hl-0"> </span><span class="hl-9">1</span><span class="hl-0"> }),</span><br/><span class="hl-0">  </span><span class="hl-5">driver</span><span class="hl-0">.</span><span class="hl-7">getDataPenduduk</span><span class="hl-0">({ </span><span class="hl-5">page:</span><span class="hl-0"> </span><span class="hl-9">2</span><span class="hl-0"> }),</span><br/><span class="hl-0">  </span><span class="hl-5">driver</span><span class="hl-0">.</span><span class="hl-7">getDataPenduduk</span><span class="hl-0">({ </span><span class="hl-5">page:</span><span class="hl-0"> </span><span class="hl-9">3</span><span class="hl-0"> }),</span><br/><span class="hl-0">])</span><br/><span class="hl-5">console</span><span class="hl-0">.</span><span class="hl-7">log</span><span class="hl-0">(</span><span class="hl-5">results</span><span class="hl-0">)</span>
+</code></pre>
+
+<a href="#connection" id="connection" style="color: inherit; text-decoration: none;">
+  <h3>Connection</h3>
+</a>
+<p>Connection is the session handler of the driver. It manages connection, login process, and cookie. It&#39;s actually not needed by end-user except when building a custom driver. Basic usage example:</p>
+<pre><code class="language-ts"><span class="hl-4">import</span><span class="hl-0"> { </span><span class="hl-5">Connection</span><span class="hl-0"> } </span><span class="hl-4">from</span><span class="hl-0"> </span><span class="hl-2">&#39;prodeskel-driver&#39;</span><br/><br/><span class="hl-3">const</span><span class="hl-0"> </span><span class="hl-6">credential</span><span class="hl-0"> = {</span><br/><span class="hl-0">  </span><span class="hl-5">username:</span><span class="hl-0"> </span><span class="hl-2">&#39;my-username&#39;</span><span class="hl-0">,</span><br/><span class="hl-0">  </span><span class="hl-5">password:</span><span class="hl-0"> </span><span class="hl-2">&#39;my-password&#39;</span><span class="hl-0">,</span><br/><span class="hl-0">}</span><br/><br/><span class="hl-3">const</span><span class="hl-0"> </span><span class="hl-6">connection</span><span class="hl-0"> = </span><span class="hl-3">new</span><span class="hl-0"> </span><span class="hl-7">Connection</span><span class="hl-0">({</span><br/><span class="hl-0">  </span><span class="hl-5">useCredential:</span><span class="hl-0"> </span><span class="hl-5">credential</span><span class="hl-0">,</span><br/><span class="hl-0">})</span><br/><span class="hl-4">await</span><span class="hl-0"> </span><span class="hl-5">connection</span><span class="hl-0">.</span><span class="hl-7">login</span><span class="hl-0">()</span><br/><span class="hl-5">console</span><span class="hl-0">.</span><span class="hl-7">log</span><span class="hl-0">(</span><span class="hl-5">connection</span><span class="hl-0">.</span><span class="hl-5">isLoggedIn</span><span class="hl-0">, </span><span class="hl-5">connection</span><span class="hl-0">.</span><span class="hl-5">cookieJar</span><span class="hl-0">)</span>
+</code></pre>
+<hr>
+
+<a href="#test" id="test" style="color: inherit; text-decoration: none;">
+  <h2>Test</h2>
+</a>
+<p>Tests are available in <code>/test</code>. Testing is done using ava.js test runner (command: <code>yarn test</code>). Sometimes, the parallel testing is buggy. In that case, run test individually per test unit.</p>
+<hr>
+<p>This project is using:</p>
+<ul>
+<li><a href="https://cheerio.js.org/">cheerio</a> to parse HTML into <code>jquery</code>-like object to make parsing easier</li>
+<li><a href="https://github.com/ianstormtaylor/superstruct/">superstruct</a> to validate data with schema</li>
+<li><a href="https://github.com/avajs/ava">ava</a> for unit testing</li>
+<li><a href="https://prettier.io/">prettier</a> for automatic opinionated code formatter</li>
+</ul>
+<hr>
+
+<a href="#feature-to-do" id="feature-to-do" style="color: inherit; text-decoration: none;">
+  <h2>Feature To-Do</h2>
+</a>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> Parallel-able async method</li>
+<li><input checked="" disabled="" type="checkbox"> Allow auto-relogin on expiring session</li>
+<li><input checked="" disabled="" type="checkbox"> Get data penduduk by page</li>
+<li><input checked="" disabled="" type="checkbox"> Find data penduduk by query</li>
+<li><input disabled="" type="checkbox"> Create data penduduk</li>
+<li><input disabled="" type="checkbox"> Update data penduduk</li>
+<li><input disabled="" type="checkbox"> Delete data penduduk</li>
+<li><input disabled="" type="checkbox"> Dump data penduduk</li>
+<li><input disabled="" type="checkbox"> Mass update data penduduk</li>
+<li><input disabled="" type="checkbox"> Sinkronisasi data penduduk</li>
+</ul>
+
+<a href="#project-to-do" id="project-to-do" style="color: inherit; text-decoration: none;">
+  <h2>Project To-Do</h2>
+</a>
+<ul>
+<li><input disabled="" type="checkbox"> Update project to use modern NodeJS (atleast, to any version that natively supports ESM)</li>
+<li><input disabled="" type="checkbox"> Updating/upgrading dependencies</li>
+<li><input disabled="" type="checkbox"> Fix ava test runner problem</li>
+<li><input disabled="" type="checkbox"> Curb unused/redundant dependencies</li>
+<li><input disabled="" type="checkbox"> Reducing as much as possible dependency to external package</li>
+<li><input disabled="" type="checkbox"> Refactor code to minimize confusion to reader</li>
+</ul>
+</div></div><div class="col-4 col-menu menu-sticky-wrap menu-highlight"><nav class="tsd-navigation primary"><ul><li class="current"><a href="modules.html">Modules</a></li><li class=" tsd-kind-module"><a href="modules/connection.html">connection</a></li><li class=" tsd-kind-module"><a href="modules/driver.html">driver</a></li><li class=" tsd-kind-module"><a href="modules/index.html">index</a></li><li class=" tsd-kind-module"><a href="modules/lib_cookie.html">lib/cookie</a></li><li class=" tsd-kind-module"><a href="modules/lib_data_parser.html">lib/data-<wbr/>parser</a></li><li class=" tsd-kind-module"><a href="modules/lib_schema.html">lib/schema</a></li><li class=" tsd-kind-module"><a href="modules/lib_types.html">lib/types</a></li></ul></nav></div></div></div><footer class="with-border-bottom"><div class="container"><h2>Legend</h2><div class="tsd-legend-group"><ul class="tsd-legend"><li class="tsd-kind-variable"><span class="tsd-kind-icon">Variable</span></li><li class="tsd-kind-function"><span class="tsd-kind-icon">Function</span></li><li class="tsd-kind-type-alias"><span class="tsd-kind-icon">Type alias</span></li><li class="tsd-kind-type-alias tsd-has-type-parameter"><span class="tsd-kind-icon">Type alias with type parameter</span></li></ul><ul class="tsd-legend"><li class="tsd-kind-interface"><span class="tsd-kind-icon">Interface</span></li><li class="tsd-kind-interface tsd-has-type-parameter"><span class="tsd-kind-icon">Interface with type parameter</span></li></ul><ul class="tsd-legend"><li class="tsd-kind-class"><span class="tsd-kind-icon">Class</span></li></ul></div><h2>Settings</h2><p>Theme <select id="theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></p></div></footer><div class="container tsd-generator"><p>Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></div><div class="overlay"></div><script src="assets/main.js"></script></body></html>
